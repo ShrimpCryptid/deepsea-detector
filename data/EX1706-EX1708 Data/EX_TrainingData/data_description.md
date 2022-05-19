@@ -1,0 +1,7 @@
+Image files come from NOAA CAPSTONE Expedition 1708. Credit to Dr. Deanna Soper Lab of University of Dallas for providing localization data, and to the original CAPSTONE team for the seed annotations. 
+
+Data in label_data.csv contains one row per localization. The filename corresponds to the image file in image_data.zip that the localizations belongs to. x,y,width, and height are the coordinates of the localization bounding box, in an upper left, normalized coordinate systems. This means that 0,0 is the upper left corner of the image, while 1,1 is the lower right corner. These coordinates are used so that they can be valid in any aspect ratio retaining resolution transformation of images. 
+
+An example transform for the x coordinate of an image would be x * image_width, rounded to an integer. Most (if not all) images are 1920x1080 in this collection, but best practice is to verify this yourself.
+
+The label corresponds to the localization label from a taxonomic hierarchy based upon the World Register Of Marine Species (WoRMS). Labels are not all at the same taxonomic level, so care should be taken to understand the different taxonomic level relationships. Annotation protocol was followed such that a label name followed by sp. means that the identification was at the genus level, with species unknown. For efforts that try to use hierarchical or grouping classifiers, it may be useful to strip the trailing "sp." from the label.

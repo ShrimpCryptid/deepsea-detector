@@ -1890,7 +1890,7 @@
     "Victorgorgia alba": "cnidaria",
     "Viminella": "cnidaria",
     "Virgularia": "cnidaria",
-    "Vitreosalpa": null,
+    "Vitreosalpa": "other-invertebrates",
     "Vityazicrinus": "echinodermata",
     "Vogtia": "cnidaria",
     "Walteria cf. leuckarti": "porifera",
@@ -1931,7 +1931,7 @@
     "coiled fecal cast": null,
     "colander": null,
     "detrital aggregate": null,
-    "dover sole": null,
+    "dover sole": "fish",
     "drop weight": null,
     "eggcase": null,
     "eggs": null,
@@ -1957,7 +1957,7 @@
     "pillow lava": null,
     "plastic": null,
     "plastic bag": null,
-    "polychaete tube": null,
+    "polychaete tube": "annelida",
     "rock": null,
     "rock outcrop": null,
     "rope": null,
@@ -1971,7 +1971,7 @@
     "sheet flow": null,
     "shell": null,
     "sinker": null,
-    "siphonophore": null,
+    "siphonophore": "cnidaria",
     "swing arm": null,
     "talus": null,
     "test": null,
@@ -1981,5 +1981,5 @@
     "trash": null,
     "whale carcass": null,
     "wood fall experiment": null,
-    "yellow ruffled sponge": null
+    "yellow ruffled sponge": "porifera"
 }
