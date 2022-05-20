@@ -219,12 +219,17 @@ class ConceptDictionary:
             json.dump(fp, self.concept_to_class, sort_keys=True, indent=4)
 
     def get_class(self, concept: str) -> str or NoneType:
-        """Gets the string class label for a concept."""
+        """Gets the string class label for a concept.
+        
+        Returns:
+        - The string class label (OrganismClass.value) if a match is found.
+        - None if no match is found.
+        """
         # Check for exact match
         if concept in self.concept_to_class and self.concept_to_class[concept]:
             return self.concept_to_class[concept]
 
-        # Check if concept exists when cropped/formatted
+        # Check if concept exists when cropped
         formatted_concept = concept.split(" ")[0]
         formatted_concept = formatted_concept.split("/")[0]
         if formatted_concept in self.concept_to_class and self.concept_to_class[formatted_concept]:
