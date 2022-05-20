@@ -172,20 +172,20 @@ def class_from_record(aphia_record: object) -> OrganismClass:
     return OrganismClass.OTHER_INVERTEBRATES
 
 
-def lookup_concept_class(concept: str) -> OrganismClass or None:
-    """ Queries WoRMS to look up the corresponding classification for a concept.
+def lookup_concept_class(concept: str) -> str or None:
+    """ Queries WoRMS to look up the corresponding classification label for a concept.
 
     Note: this makes multiple API calls and runs very slowly, 2-5 seconds per concept!
 
     Returns:
-    - The corresponding `OrganismClass` of the concept if a match was found.
+    - The corresponding string class label of the concept if a match was found.
     - `None` if no matching records were found in WoRMS.
     """
     aphia_id = get_aphia_id_from_concept(concept)
     if aphia_id:
         record = get_record_from_aphia_id(id)
         if record:
-            return class_from_record(record)
+            return class_from_record(record).value
     return None
 
 class ConceptDictionary:
@@ -223,16 +223,16 @@ class ConceptDictionary:
         # Check for exact match
         if concept in self.concept_to_class and self.concept_to_class[concept]:
             return self.concept_to_class[concept]
-        
+
         # Check if concept exists when cropped/formatted
         formatted_concept = concept.split(" ")[0]
         formatted_concept = formatted_concept.split("/")[0]
         if formatted_concept in self.concept_to_class and self.concept_to_class[formatted_concept]:
             return self.concept_to_class[formatted_concept]
-        
+
         # No match found, so we do a lookup.
         org_class = lookup_concept_class(concept)
 
         # Store the results of the lookup.
-        self.concept_to_class[concept] = org_class.value
-        self.concept_to_class[formatted_concept] = org_class.value
+        self.concept_to_class[concept] = org_class
+        self.concept_to_class[formatted_concept] = org_class
