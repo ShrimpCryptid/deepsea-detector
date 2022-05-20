@@ -1,13 +1,13 @@
 import json
-from pathlib import Path
+from os import PathLike
+from types import NoneType
 import urllib.parse
 import requests
 import enum
-""" Formats organism identifications into the classes used for the MATE 2022 ML Challenge.
 
-Peyton Lee, 5/19/22
-Underwater Remotely Operated Vehicles Team (UWROV) at the University of Washington
-"""
+# Formats organism identifications into the classes used for the MATE 2022 ML Challenge.
+# Peyton Lee, 5/19/22
+# Underwater Remotely Operated Vehicles Team (UWROV) at the University of Washington
 
 
 class OrganismClass(enum.Enum):
@@ -37,15 +37,18 @@ class OrganismClass(enum.Enum):
     VERTEBRATES_FISHES = "fish"
     UNIDENTIFIED = "unidentified"
 
+    @classmethod
+    def from_string(cls, class_name: str) -> "OrganismClass":
+        """Returns the matching OrganismClass for a given `class_name` string value."""
+        return cls(class_name)
 
-phylum_to_class = {
-    "Annelida": OrganismClass.ANNELIDA,
-    "Arthropoda": OrganismClass.ARTHROPODA,
-    "Cnidaria": OrganismClass.CNIDARIA,
-    "Echinodermata": OrganismClass.ECHINODERMATA,
-    "Mollusca": OrganismClass.MOLLUSCA,
-    "Porifera": OrganismClass.PORIFERA
-}
+    @classmethod
+    def list_values(cls) -> list[str]:
+        """Returns the list of string values for all OrganismClass classes."""
+        ret = []
+        for class_enum in list(cls):
+            ret.append(class_enum.value)
+        return ret
 
 
 def get_aphia_id_from_concept(concept_name: str) -> int or None:
@@ -86,8 +89,8 @@ def get_aphia_id_from_concept(concept_name: str) -> int or None:
 
 def get_record_from_aphia_id(aphia_id: int) -> object or None:
     """ Gets the matching Aphia Record for the provided AphiaID (`aphia_id`) from WoRMS, as returned
-    by the `rest/AphiaRecordByAphiaID/` operation. See [the WoRMS documentation](https://www.marinespecies.org/rest/)
-    for more details. 
+    by the `rest/AphiaRecordByAphiaID/` operation. See
+    [the WoRMS documentation](https://www.marinespecies.org/rest/) for more details.
 
     Returns:
     - A JSON object representing the AphiaRecord.
@@ -108,11 +111,14 @@ def class_from_record(aphia_record: object) -> OrganismClass:
     Sorts the classification into one of the 9 OrganismClass classes.
 
     Returns:
-    - The matching classification of the organism if it falls into phyla Annelida, Arthropoda, Cnidaria,
-    Echinodermata, Mollusca, Porifera.
-    - `OrganismClass.VERTEBRATES_FISHES` if it is a fish (within Agnatha, Chondrichthyes, or Osteichthyes).
-    - `OrganismClass.UNIDENTIFIED` if it is a non-fish vertebrate (e.g. mammals, amphibians) or a non-animal organism.
-    - `OrganismClass.OTHER_INVERTEBRATES` if it is an invertebrate chordate (Tunicata or Cephalochordata) or any other animal phyla.
+    - The matching classification of the organism if it falls into phyla Annelida, Arthropoda,
+    Cnidaria, Echinodermata, Mollusca, Porifera.
+    - `OrganismClass.VERTEBRATES_FISHES` if it is a fish (within Agnatha, Chondrichthyes, or
+    Osteichthyes).
+    - `OrganismClass.UNIDENTIFIED` if it is a non-fish vertebrate (e.g. mammals, amphibians) or a
+    non-animal organism.
+    - `OrganismClass.OTHER_INVERTEBRATES` if it is an invertebrate chordate
+    (Tunicata or Cephalochordata) or any other animal phyla.
     """
 
     if aphia_record["kingdom"] != "Animalia":
@@ -128,40 +134,42 @@ def class_from_record(aphia_record: object) -> OrganismClass:
         "Porifera": OrganismClass.PORIFERA
     }
 
-    if aphia_record["phylum"] in phylum_to_class.keys():  # Easily matched!
+    if aphia_record["phylum"] in phylum_to_class:  # Easily matched!
         return phylum_to_class[aphia_record["phylum"]]
 
-    else:
-        # Organism is other, fish, or unidentified.
-        if aphia_record["phylum"] == "Chordata":
-            # Check if class is either in subphylum Tunicata (tunicates) or Cephalochordata (lancelets)
-            # Unforunately the AphiaRecord doesn't give us subphylum so we'll have to go a step further to check.
-            tunicata_classes = ["Appendicularia", "Ascidiacea",
-                                "Larvacea", "Sorberacea", "Thaliacea"]
-            cephalochordate_classes = ["Leptocardii"]
+    # Organism is other, fish, or unidentified.
+    if aphia_record["phylum"] == "Chordata":
+        # Check if class is either in subphylum Tunicata (tunicates) or
+        # Cephalochordata (lancelets). Unforunately the AphiaRecord doesn't give us subphylum
+        # so we'll have to go a step further and check classes.
+        tunicata_classes = ["Appendicularia", "Ascidiacea",
+                            "Larvacea", "Sorberacea", "Thaliacea"]
+        cephalochordate_classes = ["Leptocardii"]
 
-            if aphia_record["class"] in tunicata_classes or aphia_record["class"] in cephalochordate_classes:
-                return OrganismClass.OTHER_INVERTEBRATES
-
-            # We'll also check to make sure our organism is *actually* a fish!
-            fish_classes = ["Actinopteri", "Cladistii", "Coelacanthi", "Dipneusti",
-                            "Elasmobranchii", "Holocephali", "Myxini", "Pteromyzonti"]
-            # We also add in a weird exception for Scorpaeniformes (scorpionfishes), because they don't have a class.
-            if aphia_record["class"] in fish_classes or aphia_record["order"] == "Scorpaeniformes":
-                return OrganismClass.VERTEBRATES_FISHES
-
-            # There's also labels in FathomNet for classifications like "Actinopterygii", which technically would slip through these earlier
-            # checks. We'll do additional checks for these names too.
-            fish_categories = ["Agnatha", "Cyclostomi", "Gnathostomata",
-                               "Chondrichthyes", "Osteichthyes", "Actinopterygii", "Sarcopterygii"]
-            if aphia_record["scientificname"] in fish_categories:
-                return OrganismClass.VERTEBRATES_FISHES
-
-            # If we still can't find an organization, we'll go ahead and return it as unidentified.
-            return OrganismClass.UNIDENTIFIED
-        else:
-            # Anything that's not a chordate is an invertebrate.
+        if aphia_record["class"] in tunicata_classes or aphia_record["class"] in cephalochordate_classes:
             return OrganismClass.OTHER_INVERTEBRATES
+
+        # We'll also check to make sure our organism is *actually* a fish!
+        fish_classes = ["Actinopteri", "Cladistii", "Coelacanthi", "Dipneusti",
+                        "Elasmobranchii", "Holocephali", "Myxini", "Pteromyzonti"]
+        # We also add in a weird exception for Scorpaeniformes (scorpionfishes),
+        # because they don't have a class.
+        if aphia_record["class"] in fish_classes or aphia_record["order"] == "Scorpaeniformes":
+            return OrganismClass.VERTEBRATES_FISHES
+
+        # There's also labels in FathomNet for classifications like "Actinopterygii",
+        # which technically would slip through these earlier checks. We'll do additional
+        # checks for these names too.
+        fish_categories = ["Agnatha", "Cyclostomi", "Gnathostomata",
+                            "Chondrichthyes", "Osteichthyes", "Actinopterygii", "Sarcopterygii"]
+        if aphia_record["scientificname"] in fish_categories:
+            return OrganismClass.VERTEBRATES_FISHES
+
+        # If we still can't find an organization, we'll go ahead and return it as unidentified.
+        return OrganismClass.UNIDENTIFIED
+
+    # Anything that's not a chordate is an invertebrate.
+    return OrganismClass.OTHER_INVERTEBRATES
 
 
 def lookup_concept_class(concept: str) -> OrganismClass or None:
@@ -173,9 +181,58 @@ def lookup_concept_class(concept: str) -> OrganismClass or None:
     - The corresponding `OrganismClass` of the concept if a match was found.
     - `None` if no matching records were found in WoRMS.
     """
-    id = get_aphia_id_from_concept(concept)
-    if id:
+    aphia_id = get_aphia_id_from_concept(concept)
+    if aphia_id:
         record = get_record_from_aphia_id(id)
         if record:
             return class_from_record(record)
     return None
+
+class ConceptDictionary:
+    """Looks up and caches the matching OrganismClass for data concepts."""
+
+    # Matches a string concept name to its 
+    concept_to_class: dict[str, str or None]
+
+    def __init__(self, dictionary: dict[str, str or None]=None) -> None:
+        """Initializes a new ConceptDictionary.
+
+        Params:
+        - `dictionary`: Optional object dictionary to preload values from.
+        """
+        if dictionary:
+            # Naively set our own concept dictionary using the dictionary.
+            # TODO: value check.
+            self.concept_to_class = dictionary
+        else:
+            self.concept_to_class = {}
+
+    @classmethod
+    def load_from_json(cls, path: PathLike) -> "ConceptDictionary":
+        """Loads a concept dictionary JSON from a file."""
+        with open(path, 'r') as fp:
+            return ConceptDictionary(json.load(fp))
+
+    def save_to_json(self, path: PathLike) -> None:
+        """Saves this concept dictionary to a file in JSON format."""
+        with open(path, 'w') as fp:
+            json.dump(fp, self.concept_to_class, sort_keys=True, indent=4)
+
+    def get_class(self, concept: str) -> str or NoneType:
+        """Gets the string class label for a concept."""
+        # Check for exact match
+        if concept in self.concept_to_class and self.concept_to_class[concept]:
+            return self.concept_to_class[concept]
+        
+        # Check if concept exists when cropped/formatted
+        formatted_concept = concept.split(" ")[0]
+        formatted_concept = formatted_concept.split("/")[0]
+        if formatted_concept in self.concept_to_class and self.concept_to_class[formatted_concept]:
+            return self.concept_to_class[formatted_concept]
+        
+        # No match found, so we do a lookup.
+        org_class = lookup_concept_class(concept)
+
+        # Store the results of the lookup.
+        self.concept_to_class[concept] = org_class.value
+        self.concept_to_class[formatted_concept] = org_class.value
