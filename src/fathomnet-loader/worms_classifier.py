@@ -1,9 +1,9 @@
 import json
 from os import PathLike
-from types import NoneType
 import urllib.parse
 import requests
 import enum
+from typing import List, Dict
 
 # Formats organism identifications into the classes used for the MATE 2022 ML Challenge.
 # Peyton Lee, 5/19/22
@@ -35,7 +35,7 @@ class OrganismClass(enum.Enum):
     PORIFERA = "porifera"
     OTHER_INVERTEBRATES = "other-invertebrates"
     VERTEBRATES_FISHES = "fish"
-    UNIDENTIFIED = "unidentified"
+    UNIDENTIFIED = "unidentified-biology"
 
     @classmethod
     def from_string(cls, class_name: str) -> "OrganismClass":
@@ -43,7 +43,7 @@ class OrganismClass(enum.Enum):
         return cls(class_name)
 
     @classmethod
-    def list_values(cls) -> list[str]:
+    def list_values(cls) -> List[str]:
         """Returns the list of string values for all OrganismClass classes."""
         ret = []
         for class_enum in list(cls):
@@ -191,10 +191,10 @@ def lookup_concept_class(concept: str) -> str or None:
 class ConceptDictionary:
     """Looks up and caches the matching OrganismClass for data concepts."""
 
-    # Matches a string concept name to its 
-    concept_to_class: dict[str, str or None]
+    # Matches a string concept name to its string class, None if no match found in WoRMS
+    concept_to_class: Dict[str, str or None]
 
-    def __init__(self, dictionary: dict[str, str or None]=None) -> None:
+    def __init__(self, dictionary: Dict[str, str or None]=None) -> None:
         """Initializes a new ConceptDictionary.
 
         Params:
@@ -209,7 +209,10 @@ class ConceptDictionary:
 
     @classmethod
     def load_from_json(cls, path: PathLike) -> "ConceptDictionary":
-        """Loads a concept dictionary JSON from a file."""
+        """Loads a concept dictionary JSON from a file.
+        
+        JSON should be a dict from concept to class (OrganismClass), or none
+        """
         with open(path, 'r') as fp:
             return ConceptDictionary(json.load(fp))
 
@@ -218,7 +221,7 @@ class ConceptDictionary:
         with open(path, 'w') as fp:
             json.dump(fp, self.concept_to_class, sort_keys=True, indent=4)
 
-    def get_class(self, concept: str) -> str or NoneType:
+    def get_class(self, concept: str) -> str or None:
         """Gets the string class label for a concept.
         
         Returns:
@@ -241,3 +244,5 @@ class ConceptDictionary:
         # Store the results of the lookup.
         self.concept_to_class[concept] = org_class
         self.concept_to_class[formatted_concept] = org_class
+
+        return org_class
