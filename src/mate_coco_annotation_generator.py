@@ -2,7 +2,6 @@
 
 import json
 import os
-import sys
 import csv
 
 from worms_classifier import ConceptDictionary, OrganismClass
@@ -41,17 +40,17 @@ labels_reader = csv.reader(labels_file)
 
 concept_dict_filename = os.path.join(dirname, DATA_FILES_PREFIX + CONCEPT_DICT_FILENAME)
 if not os.path.exists(filename):
-  raise FileNotFoundError(CONCEPT_DICT_FILENAME + " does not exist.")
+  raise FileNotFoundError(filename + " does not exist.")
 
 filename = os.path.join(dirname, DATA_FILES_PREFIX + UNMATCHED_LOG_FILENAME)
-if not os.path.exists(filename):
-  raise FileExistsError(ANNOTATION_FILENAME + " already exists, delete file before running.")
+if os.path.exists(filename):
+  raise FileExistsError(filename + " already exists, rename or delete file before running.")
 unmatched_log_file = open(filename, 'w')
 
 
 filename = os.path.join(dirname, DATA_FILES_PREFIX + ANNOTATION_FILENAME)
-if not os.path.exists(filename):
-  raise FileExistsError(ANNOTATION_FILENAME + " already exists, delete file before running.")
+if os.path.exists(filename):
+  raise FileExistsError(filename + " already exists, rename or delete file before running.")
 generated_annotation_file = open(filename, 'w', encoding='utf-8')
 
 
@@ -91,7 +90,10 @@ for i in range(len(categories_list)):
 # IMAGES
 images_set = set()
 
-for row in labels_reader:
+for i, row in enumerate(labels_reader):
+    # skip header
+    if i == 0:
+        continue
     images_set.add(row[0])
 
 images_list = list(images_set)
@@ -102,7 +104,7 @@ image_name_to_id = {}
 images = []
 
 # skip csv header, start at 1
-for i in range(1, len(images_list)):
+for i in range(len(images_list)):
     new_image = {
         "id": i,
         "file_name": images_list[i],
@@ -118,24 +120,32 @@ annotations = []
 
 concept_dict = ConceptDictionary.load_from_json(concept_dict_filename)
 
-# again, skip csv header
-for i in range(1, len(labels_reader)):
-    row = labels_reader[i]
+# go back to the start of the file to generate annotations
+labels_file.seek(0)
+for i, row in enumerate(labels_reader):
+    if (i == 0):
+        # again, skip csv header
+        continue
+
     image_name = row[0]
     if image_name not in image_name_to_id:
         # this should never happen, abort
+        print(images_list)
         raise ValueError(image_name + " not found in first pass through labels")
 
     image_id = image_name_to_id[image_name]
 
-    category_name = concept_dict.concept_to_class(row[5])
+    category_name = concept_dict.get_class(row[5])
     if category_name is None:
-        unmatched_log_file.write(row + '\n')
+        unmatched_log_file.write(str(row) + '\n')
         continue
 
     category_id = category_name_to_id[category_name]
 
-    x, y, width, height = 0
+    x = 0
+    y = 0
+    width = 0
+    height = 0
 
     # not all labels are localized
     try:
@@ -144,7 +154,7 @@ for i in range(1, len(labels_reader)):
         width = float(row[3])
         height = float(row[4])
     except:
-        unmatched_log_file.write(row + '\n')
+        unmatched_log_file.write(str(row) + '\n')
         continue
 
 
@@ -159,6 +169,8 @@ for i in range(1, len(labels_reader)):
         "iscrowd": 0
 
     }
+    annotations.append(new_annotation)
+    print("Rows processed: " + str(i))
         
         
     
@@ -172,5 +184,5 @@ coco_annotation = {
 }
 
 # extra parameters for nice formatting
-json.dump(coco_annotation, generated_annotation_file, ensure_ascii=False, index=4)
+json.dump(coco_annotation, generated_annotation_file, ensure_ascii=False, indent=4)
 print("Annotation file generated, at " + ANNOTATION_FILENAME)
