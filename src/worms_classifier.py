@@ -67,24 +67,25 @@ def get_aphia_id_from_concept(concept_name: str) -> int or None:
     # Additional formatting to get only highest level of taxonomic information (ignores trailing ' sp.', etc.)
     formatted_name = concept_name.split(" ")[0]
     formatted_name = formatted_name.split("/")[0]
+    formatted_name = formatted_name.capitalize()
 
-    if (formatted_name[0].isupper()):
-        parsed_name = urllib.parse.quote(formatted_name)
-        url = "https://www.marinespecies.org/rest/AphiaIDByName/" + parsed_name
+    parsed_name = urllib.parse.quote(formatted_name)
+    url = "https://www.marinespecies.org/rest/AphiaIDByName/" + parsed_name
+    response = requests.get(url)
+    if (response.status_code == 200):  # Successful match
+        return response.json()
+    elif (response.status_code == 206):
+        # Multiple matches, so get the first accepted ID if one exists.
+        url = "https://www.marinespecies.org/rest/AphiaRecordsByName/" + parsed_name
         response = requests.get(url)
-        if (response.status_code == 200):  # Successful match
-            return response.json()
-        elif (response.status_code == 206):
-            # Multiple matches, so get the first accepted ID if one exists.
-            url = "https://www.marinespecies.org/rest/AphiaRecordsByName/" + parsed_name
-            response = requests.get(url)
 
-            if (response.status_code == 200):  # Successful
-                for record in response.json():
-                    if record["status"] == "accepted":
-                        return record["AphiaID"]
-                return response.json()[0]["AphiaID"]
-    return None
+        if (response.status_code == 200):  # Successful
+            for record in response.json():
+                if record["status"] == "accepted":
+                    return record["AphiaID"]
+            return response.json()[0]["AphiaID"]
+    else:
+        return None
 
 
 def get_record_from_aphia_id(aphia_id: int) -> object or None:
@@ -183,7 +184,7 @@ def lookup_concept_class(concept: str) -> str or None:
     """
     aphia_id = get_aphia_id_from_concept(concept)
     if aphia_id:
-        record = get_record_from_aphia_id(id)
+        record = get_record_from_aphia_id(aphia_id)
         if record:
             return class_from_record(record).value
     return None
