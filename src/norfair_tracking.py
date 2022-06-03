@@ -3,7 +3,7 @@
 """
 
 import argparse
-from typing import Union, List, Optional
+from typing import Dict, Union, List, Optional, Set
 import csv
 
 import torch
@@ -13,7 +13,7 @@ import numpy as np
 import cv2
 
 max_distance_between_points: int = 30
-classifications: list[str] = ['annelida', 'arthropoda', 'cnidaria', 'echinodermata', 'fish', 'mollusca', 'other-invertebrates', 'porifera', 'unidentified-biology']
+classifications: List[str] = ['annelida', 'arthropoda', 'cnidaria', 'echinodermata', 'fish', 'mollusca', 'other-invertebrates', 'porifera', 'unidentified-biology']
 
 class YOLO:
     def __init__(self, model_path: str, device: Optional[str] = None):
@@ -45,10 +45,12 @@ class YOLO:
 
 
 def euclidean_distance(detection, tracked_object):
+    """Returns euclidean distance between two points."""
     return np.linalg.norm(detection.points - tracked_object.estimate)
 
 
 def center(points):
+    """Returns the center coordinates of a series of points."""
     return [np.mean(np.array(points), axis=0)]
 
 
@@ -71,7 +73,7 @@ def yolo_detections_to_norfair_detections(
                 ]
             )
             scores = np.array([detection_as_xywh[4].item()])
-            label = int(detection_as_xywh[5].item())
+            label = classifications[int(detection_as_xywh[5].item())]
             norfair_detections.append(
                 norfair.Detection(points=centroid, scores=scores, label=label)
             )
@@ -84,7 +86,7 @@ def yolo_detections_to_norfair_detections(
                     [detection_as_xyxy[2].item(), detection_as_xyxy[3].item()]
                 ]
             )
-            label = int(detection_as_xyxy[5].item())
+            label = classifications[int(detection_as_xyxy[5].item())]
             scores = np.array([detection_as_xyxy[4].item(),
                               detection_as_xyxy[4].item()])
             norfair_detections.append(
@@ -135,8 +137,8 @@ if __name__ == "__main__":
         # 0: first frame of appearance
         # 1: last frame of appearance
         # 2: classification label index
-        track_id_to_data: dict[int, list[int]] = {}
-        currently_tracked_ids: set[int] = set()
+        track_id_to_data: Dict[int, List[Union[str, int]]] = {}
+        currently_tracked_ids: Set[int] = set()
 
         for i, frame in enumerate(video):
 
@@ -158,10 +160,8 @@ if __name__ == "__main__":
             else:
                 tracked_objects = tracker.update()
 
-            print(tracked_objects)
-
             # Loop through tracked objects and save their label ("initialized id") and unique id.
-            ids_seen_this_frame: set[int] = set()
+            ids_seen_this_frame: Set[int] = set()
             for obj in tracked_objects:
                 if obj.id not in track_id_to_data:
                     # First time this object has been identified, so we save it.
@@ -175,10 +175,11 @@ if __name__ == "__main__":
                     track_id_to_data[track_id][1] = i - 1;
                     currently_tracked_ids.remove(track_id)
 
-            norfair.draw_tracked_objects(frame, tracked_objects)
+            norfair.draw_tracked_boxes(frame, tracked_objects, color_by_label=True, draw_labels=True,
+                border_width=1, label_size=1.0)
             frame = paths_drawer.draw(frame, tracked_objects)
             video.write(frame)
-            cv2.imshow('image', frame)
+            # cv2.imshow('image', frame)
 
     print(track_id_to_data)
     # Finished traversing frames, so we write out CSV tracking data.
@@ -189,7 +190,7 @@ if __name__ == "__main__":
             # Write out each tracked object as its own row.
             # classification, starting frame, ending frame
             writer.writerow({
-                'classification': classifications[track_data[2]],
+                'classification': track_data[2],
                 'first_frame': track_data[0],
                 'last_frame': track_data[1]
                 })
