@@ -116,8 +116,6 @@ if __name__ == "__main__":
                         help='Filter by class: --classes 0, or --classes 0 2 3')
     parser.add_argument("--device", type=str, default=None,
                         help="Inference device: 'cpu' or 'cuda'")
-    parser.add_argument("--track_points", type=str, default="centroid",
-                        help="Track points: 'centroid' or 'bbox'")
     parser.add_argument("--period", type=int, default=1,
                         help="The period (in frames) with which the detector should be run.")
     # TODO: Handle multiple input videos without overwriting the same file
@@ -159,13 +157,10 @@ if __name__ == "__main__":
                     classes=args.classes
                 )
                 norfair_detections = yolo_detections_to_norfair_detections(
-                    yolo_detections, track_points=args.track_points)
+                    yolo_detections, track_points="bbox")
                 tracked_objects = tracker.update(
                     detections=norfair_detections, period=args.period)
-                if args.track_points == 'centroid':
-                    norfair.draw_points(frame, norfair_detections)
-                elif args.track_points == 'bbox':
-                    norfair.draw_boxes(frame, norfair_detections)
+                norfair.draw_boxes(frame, norfair_detections)
             else:
                 tracked_objects = tracker.update()
 
@@ -185,7 +180,7 @@ if __name__ == "__main__":
                     currently_tracked_ids.remove(track_id)
 
             norfair.draw_tracked_boxes(frame, tracked_objects, color_by_label=True,
-                                       draw_labels=True, border_width=1, label_size=1.0)
+                                       draw_labels=True, border_width=1, label_size=0.75)
             frame = paths_drawer.draw(frame, tracked_objects)
             video.write(frame)
 
