@@ -2,21 +2,33 @@
 
 # pylint: disable=line-too-long
 from functools import partial
+from queue import Empty, Queue
 import subprocess
+from threading import Thread
 from tkinter import *  # pylint: disable=wildcard-import
 from tkinter import ttk
 from tkinter import filedialog
 from typing import List, Tuple
 import torch
 
+# From https://stackoverflow.com/questions/665566/redirect-command-line-results-to-a-tkinter-gui
+def iter_except(function, exception):
+    """Works like builtin 2-argument `iter()`, but stops on `exception`."""
+    try:
+        while True:
+            yield function()
+    except exception:
+        return
 
 class InferenceUI:
     """The user interface for running tracking and inference."""
     file_entry_width = 24
 
     def __init__(self, root):
+        self.root = root
         root.title("Deepsea-Detector UI")
 
+        self.inference_process = None
         label_padding = ("3 3 3 3")
 
         # Create frame widget
@@ -130,21 +142,25 @@ class InferenceUI:
         ttk.Label(ml_frame, text="Use GPU:", padding=label_padding).grid(
             column=1, row=5, sticky=NW)
         self.use_gpu = BooleanVar(value=torch.cuda.is_available())
-        gpu_checkbox = ttk.Checkbutton(ml_frame, variable=self.use_gpu)
-        gpu_checkbox.grid(column=2, row=5, sticky=W)
-        gpu_checkbox["state"] = "disabled"
+        self.gpu_checkbox = ttk.Checkbutton(ml_frame, variable=self.use_gpu)
+        self.gpu_checkbox.grid(column=2, row=5, sticky=W)
+
+        # Enable/disable GPU checkbox based on CUDA device availability
         if torch.cuda.is_available():
-            gpu_checkbox["state"] = "enable"
+            self.gpu_checkbox["state"] = "enable"
         else:
+            self.gpu_checkbox["state"] = "disabled"
             ttk.Label(ml_frame, text="No GPU detected.", padding=label_padding).grid(
                 column=2, row=6, sticky=NW)
 
         # RUN INFERENCE
-        ttk.Button(mainframe, text="Run Inference", width=24, command=self.run_inference).grid(
-            column=1, row=4, sticky=(E))
-
-        for child in mainframe.winfo_children():
-            child.grid_configure(padx=5, pady=5)
+        cmd_output_buffer = Queue(maxsize=1024)  # Buffer for output from any running commands.
+        run_inference_command = partial(self.run_inference, cmd_output_buffer)
+        self.run_inference_button = ttk.Button(mainframe,
+                                               text="Run Inference",
+                                               width=24,
+                                               command=run_inference_command)
+        self.run_inference_button.grid(column=1, row=4, sticky=(E))
 
         # Text area for command output
         cmd_frame = ttk.LabelFrame(mainframe, text='Inference Output')
@@ -161,9 +177,15 @@ class InferenceUI:
         x_scroll.grid(column=1, row=2, sticky=(W, E))
         self.cmd_output_area['yscrollcommand'] = y_scroll.set
         self.cmd_output_area['xscrollcommand'] = x_scroll.set
+        # Configure colors for error and info tags
         self.cmd_output_area.tag_config("errorstring", foreground="#CC0000")
         self.cmd_output_area.tag_config("infostring", foreground="#008800")
 
+        
+        for child in mainframe.winfo_children():
+            child.grid_configure(padx=5, pady=5)
+
+        # Sets up a keybind for running the inference automatically.
         root.bind("<Return>", self.run_inference)
 
     def browse(self, target: StringVar, default_extension: str = "", filetypes: List[Tuple[str, str]] = list()):
@@ -193,11 +215,42 @@ class InferenceUI:
         self.cmd_output_area.insert(INSERT, str, tags or self.get_default_tags(str))
         self.cmd_output_area.yview(END)
 
+    # Adapted from https://stackoverflow.com/questions/665566/redirect-command-line-results-to-a-tkinter-gui
+    def cmd_reader_thread(self, cmd_output_buffer: Queue):
+        "Reads the command output while the inference subprocess is running."
+        try:
+            with self.inference_process.stdout as pipe:
+                for line in iter(pipe.readline, b''):
+                    cmd_output_buffer.put(line)
+        finally:
+            cmd_output_buffer.put(None)  # signal that the process is completed
+
+    def update(self, cmd_output_buffer: Queue):
+        "Update loop for the InferenceUI."
+        # Check to see if thread finished, if so clean up
+        # Reenable buttons
+        for line in iter_except(cmd_output_buffer.get_nowait, Empty):
+            if line:
+                # Update command output with new line
+                self.add_cmd_output(line)
+            else: # line is None, so subprocess is complete
+                self.add_cmd_output("!!!!Finished!!!!")
+                self.inference_process = None
+
+        # Disable Run Inference button if there's an existing process running.
+        if self.inference_process:
+            self.run_inference_button["state"]="disabled"
+        else:
+            self.run_inference_button["state"]="enabled"
+
+        # Run next update
+        self.root.after(40, self.update, cmd_output_buffer)
+
     # Adapted from https://www.executionunit.com/blog/2012/10/26/using-python-and-tkinter-to-capture-script-output/
-    def run_inference(self):
+    def run_inference(self, cmd_output_buffer: Queue):
         "Starts inference calculations, using the input settings."
         # Set up script variables
-        path_to_inference_script = "C:/Users/gabyb/OneDrive - UW/2022-2 Spring/CSE 455 - Computer Vision/deepsea-detector/src/norfair_tracking.py"
+        path_to_inference_script = "./src/norfair_tracking.py"
         video_in_path = self.video_in.get()
         video_out_path = self.video_out.get()
         csv_out_path = self.csv_out.get()
@@ -225,21 +278,23 @@ class InferenceUI:
 
         self.add_cmd_output(" ".join(cmdlist) + "\n")
 
-        # Start a thread to run the process
-        inference_process = subprocess.Popen(cmdlist,
+        # Start the inference thread
+        self.inference_process = subprocess.Popen(cmdlist,
                                                   stdout=subprocess.PIPE,
-                                                  stderr=subprocess.STDOUT,
+                                                  stderr=subprocess.PIPE,
                                                   universal_newlines=True)
-        while(True):
-            line = inference_process.stdout.readline()
-            if not line:
-                break
-            self.add_cmd_output(line)
-            # Force view update
-            self.cmd_output_area.update_idletasks()
-        self.add_cmd_output("Finished!\n")
+        # Start a thread to receive process output
+        t = Thread(target=self.cmd_reader_thread, args=[cmd_output_buffer])
+        t.daemon = True # Flags as a daemon thread, so it will close at shutdown
+        t.start()
 
+    def quit(self):
+        "Closes threads and the program."
+        if self.inference_process is not None:
+            self.inference_process.kill()
+            self.root.destroy()
 
 root = Tk()
-InferenceUI(root)
+app = InferenceUI(root)
+root.protocol("WM_DELETE_WINDOW", app.quit)
 root.mainloop()
