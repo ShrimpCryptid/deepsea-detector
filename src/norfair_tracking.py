@@ -6,16 +6,20 @@ import argparse
 from typing import Dict, Union, List, Optional, Set
 import csv
 
-import torch
-import yolov5
+import cv2
 import norfair
 import numpy as np
-import cv2
+import torch
+import yolov5
 
 max_distance_between_points: int = 30
-classifications: List[str] = ['annelida', 'arthropoda', 'cnidaria', 'echinodermata', 'fish', 'mollusca', 'other-invertebrates', 'porifera', 'unidentified-biology']
+PREVIEW_WINDOW_NAME = "image"
+classifications: List[str] = ['annelida', 'arthropoda', 'cnidaria', 'echinodermata', 'fish',
+                              'mollusca', 'other-invertebrates', 'porifera', 'unidentified-biology']
+
 
 class YOLO:
+    "Wrapper class for loading and running YOLO model"
     def __init__(self, model_path: str, device: Optional[str] = None):
         if device is not None and "cuda" in device and not torch.cuda.is_available():
             raise Exception(
@@ -40,7 +44,7 @@ class YOLO:
         self.model.iou = iou_threshold
         if classes is not None:
             self.model.classes = classes
-        detections = self.model(img, size=image_size)
+        detections = self.model(img, size=image_size)  # pylint: disable=not-callable
         return detections
 
 
@@ -116,17 +120,21 @@ if __name__ == "__main__":
                         help="Track points: 'centroid' or 'bbox'")
     parser.add_argument("--period", type=int, default=1,
                         help="The period (in frames) with which the detector should be run.")
+    # TODO: Handle multiple input videos without overwriting the same file
     parser.add_argument("--output_csv", type=str, default="out.csv",
                         help="Output path for the tracking data CSV file.")
     parser.add_argument("--output_video", type=str, default="out.mp4",
                         help="Output path for the MP4 video file, showing annotations.")
+    parser.add_argument("--show_preview", action="store_true",
+                        help="Show a preview of detections in real time. Do not use in notebooks.")
 
     args = parser.parse_args()
 
     model = YOLO(args.detector_path, device=args.device)
 
     for input_path in args.files:
-        video = norfair.Video(input_path=input_path, output_path=args.output_video)
+        video = norfair.Video(input_path=input_path,
+                              output_path=args.output_video)
         tracker = norfair.Tracker(
             distance_function=euclidean_distance,
             distance_threshold=max_distance_between_points,
@@ -150,13 +158,14 @@ if __name__ == "__main__":
                     image_size=args.img_size,
                     classes=args.classes
                 )
-                detections = yolo_detections_to_norfair_detections(
+                norfair_detections = yolo_detections_to_norfair_detections(
                     yolo_detections, track_points=args.track_points)
-                tracked_objects = tracker.update(detections=detections, period=args.period)
+                tracked_objects = tracker.update(
+                    detections=norfair_detections, period=args.period)
                 if args.track_points == 'centroid':
-                    norfair.draw_points(frame, detections)
+                    norfair.draw_points(frame, norfair_detections)
                 elif args.track_points == 'bbox':
-                    norfair.draw_boxes(frame, detections)
+                    norfair.draw_boxes(frame, norfair_detections)
             else:
                 tracked_objects = tracker.update()
 
@@ -172,20 +181,23 @@ if __name__ == "__main__":
             # Check if any ids were no longer tracked this frame, and update their entries.
             for track_id in set(currently_tracked_ids):
                 if track_id not in ids_seen_this_frame:  # ID disappeared, record last frame.
-                    track_id_to_data[track_id][1] = i - 1;
+                    track_id_to_data[track_id][1] = i - 1
                     currently_tracked_ids.remove(track_id)
 
-            norfair.draw_tracked_boxes(frame, tracked_objects, color_by_label=True, draw_labels=True,
-                border_width=1, label_size=1.0)
+            norfair.draw_tracked_boxes(frame, tracked_objects, color_by_label=True,
+                                       draw_labels=True, border_width=1, label_size=1.0)
             frame = paths_drawer.draw(frame, tracked_objects)
             video.write(frame)
-            # cv2.imshow('image', frame)
+
+            if args.show_preview:
+                cv2.imshow(PREVIEW_WINDOW_NAME, frame)
 
     print(track_id_to_data)
     # Finished traversing frames, so we write out CSV tracking data.
     with open(args.output_csv, 'w', newline='') as csv_file:
         fieldnames = ['classification', 'first_frame', 'last_frame']
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
+        writer = csv.DictWriter(
+            csv_file, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
         for track_data in track_id_to_data.values():
             # Write out each tracked object as its own row.
             # classification, starting frame, ending frame
@@ -193,4 +205,8 @@ if __name__ == "__main__":
                 'classification': track_data[2],
                 'first_frame': track_data[0],
                 'last_frame': track_data[1]
-                })
+            })
+
+    # Close the preview window
+    if args.show_preview:
+        cv2.destroyWindow(PREVIEW_WINDOW_NAME)
