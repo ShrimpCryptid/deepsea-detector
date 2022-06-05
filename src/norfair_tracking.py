@@ -5,12 +5,13 @@
 import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Union, List, Optional, Set
+from typing import Dict, Tuple, Union, List, Optional, Set
 import csv
 
 import cv2
 import norfair
 import numpy as np
+from pyparsing import Or
 import torch
 import yolov5
 
@@ -18,6 +19,22 @@ max_distance_between_points: int = 30
 PREVIEW_WINDOW_NAME = "image"
 classifications: List[str] = ['annelida', 'arthropoda', 'cnidaria', 'echinodermata', 'fish',
                               'mollusca', 'other-invertebrates', 'porifera', 'unidentified-biology']
+
+class OrganismDetection:
+    "Data class for organism detections."
+
+    def __init__(self, num_id:int, classification:str) -> None:
+        self.num_id: int = num_id
+        self.classification: str = classification
+        self.frames: List[int] = []
+    
+    def add_detection(self, frame:int):
+        "Registers a detection, including the frame of appearance and confidence level."
+        self.frames.append(frame)
+
+    def get_first_last_frame(self) -> Tuple[int, int]:
+        "Returns the first and last frame of appearance as a tuple."
+        return (self.frames[0], self.frames[len(self.frames) - 1])    
 
 
 class YOLO:
@@ -69,7 +86,6 @@ def format_seconds(seconds: int) -> str:
         return "%d:%02d:%02d" % (h, m, s)
     else:
         return "%02d:%02d" % (m, s)
-
 
 def yolo_detections_to_norfair_detections(
     yolo_detections: torch.Tensor,
@@ -169,12 +185,7 @@ if __name__ == "__main__":
         )
         paths_drawer = norfair.Paths(center, attenuation=0.01)
 
-        # Data objects for storing currently detected objects.
-        # 0: first frame of appearance
-        # 1: last frame of appearance
-        # 2: classification label index
-        track_id_to_data: Dict[int, List[Union[str, int]]] = {}
-        currently_tracked_ids: Set[int] = set()
+        track_id_to_data: Dict[int, OrganismDetection] = {}
 
         for i, frame in enumerate(video):
             if i % args.period == 0:
@@ -193,23 +204,14 @@ if __name__ == "__main__":
             else:
                 tracked_objects = tracker.update()
 
-            # Loop through tracked objects and save their label ("initialized id") and unique id.
-            ids_seen_this_frame: Set[int] = set()
             for obj in tracked_objects:
                 if obj.id not in track_id_to_data:
                     # First time this object has been identified, so we save it.
-                    track_id_to_data[obj.id] = [i, -1, obj.label]
-                    currently_tracked_ids.add(obj.id)
-                ids_seen_this_frame.add(obj.id)
-
-            # Check if any ids were no longer tracked this frame, and update their entries.
-            for track_id in set(currently_tracked_ids):
-                if track_id not in ids_seen_this_frame:  # ID disappeared, record last frame.
-                    track_id_to_data[track_id][1] = i - 1
-                    currently_tracked_ids.remove(track_id)
+                    track_id_to_data[obj.id] = OrganismDetection(obj.id, obj.label)
+                track_id_to_data[obj.id].add_detection(i)
 
             norfair.draw_tracked_boxes(frame, tracked_objects, color_by_label=True,
-                                       draw_labels=True, border_width=1, label_size=0.75)
+                                       draw_labels=True, border_width=1)
             frame = paths_drawer.draw(frame, tracked_objects)
             video.write(frame)
 
@@ -234,13 +236,14 @@ if __name__ == "__main__":
         fieldnames = ['classification', 'first_frame', 'last_frame']
         writer = csv.DictWriter(
             csv_file, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
-        for track_data in track_id_to_data.values():
+        for organism_detection in track_id_to_data.values():
             # Write out each tracked object as its own row.
             # classification, starting frame, ending frame
+            first_frame, last_frame = organism_detection.get_first_last_frame()
             writer.writerow({
-                'classification': track_data[2],
-                'first_frame': track_data[0],
-                'last_frame': track_data[1]
+                'classification': organism_detection.classification,
+                'first_frame': first_frame,
+                'last_frame': last_frame
             })
 
     # Close the preview window
