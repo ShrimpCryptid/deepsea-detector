@@ -1,6 +1,8 @@
 """User interface for running video detection and tracking inference."""
 
 # pylint: disable=line-too-long
+# pylint: disable=consider-use-fstring
+from datetime import datetime
 from functools import partial
 from queue import Empty, Queue
 import subprocess
@@ -11,6 +13,8 @@ from tkinter import filedialog
 from typing import List, Tuple
 import torch
 
+from norfair_tracking import format_seconds
+
 # From https://stackoverflow.com/questions/665566/redirect-command-line-results-to-a-tkinter-gui
 def iter_except(function, exception):
     """Works like builtin 2-argument `iter()`, but stops on `exception`."""
@@ -20,6 +24,21 @@ def iter_except(function, exception):
     except exception:
         return
 
+
+def cmdlist_to_cmd_string(cmdlist: List) -> str:
+    ret = ""
+    for term in cmdlist:
+        if isinstance(term, str):
+            # Wrap with quotations if there are spaces in it
+            if term.find(" ") != -1:
+                ret += "'{}' ".format(term)
+            else:
+                ret += term + " "
+        else:
+            ret += str(term) + " "
+    return ret[0:-1]
+
+
 class InferenceUI:
     """The user interface for running tracking and inference."""
     file_entry_width = 24
@@ -27,8 +46,10 @@ class InferenceUI:
     def __init__(self, root):
         self.root = root
         root.title("Deepsea-Detector UI")
+        root.minsize(600, 600)
 
         self.inference_process = None
+        self.start_timestamp = datetime.now()
         label_padding = ("3 3 3 3")
 
         # Create frame widget
@@ -166,9 +187,10 @@ class InferenceUI:
         cmd_frame = ttk.LabelFrame(mainframe, text='Inference Output')
         cmd_frame.grid(column=1, row=5, sticky=(N, E, W, S))
         cmd_frame.columnconfigure(1, weight=1)
+        cmd_frame.rowconfigure(1, weight=1)
         mainframe.rowconfigure(5, weight=1)
 
-        self.cmd_output_area = Text(cmd_frame, wrap=NONE, bd=0, height=12)
+        self.cmd_output_area = Text(cmd_frame, wrap=NONE, bd=0, height=6)
         self.cmd_output_area.grid(column=1, row=1, sticky=(N, E, W, S))
         # Add scrollbars
         y_scroll = Scrollbar(cmd_frame, orient="vertical", command=self.cmd_output_area.yview)
@@ -181,12 +203,12 @@ class InferenceUI:
         self.cmd_output_area.tag_config("errorstring", foreground="#CC0000")
         self.cmd_output_area.tag_config("infostring", foreground="#008800")
 
-        
         for child in mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
 
         # Sets up a keybind for running the inference automatically.
         root.bind("<Return>", self.run_inference)
+        self.update(cmd_output_buffer)
 
     def browse(self, target: StringVar, default_extension: str = "", filetypes: List[Tuple[str, str]] = list()):
         "Opens a file dialog and sets the given target StringVar to the selected file path."
@@ -227,14 +249,26 @@ class InferenceUI:
 
     def update(self, cmd_output_buffer: Queue):
         "Update loop for the InferenceUI."
-        # Check to see if thread finished, if so clean up
-        # Reenable buttons
-        for line in iter_except(cmd_output_buffer.get_nowait, Empty):
-            if line:
-                # Update command output with new line
-                self.add_cmd_output(line)
-            else: # line is None, so subprocess is complete
-                self.add_cmd_output("!!!!Finished!!!!")
+
+        if self.inference_process is not None:  # We are currently running inference
+            # Dump buffer into the cmd output text area
+            for line in iter_except(cmd_output_buffer.get_nowait, Empty):
+                if line:
+                    # Update command output with new line
+                    self.add_cmd_output(line)
+            
+            # Check if process finished, if so
+            returncode = self.inference_process.poll()
+            if returncode is not None:
+                end_timestamp = datetime.now()
+                end_timestamp_s = end_timestamp.strftime("%H:%M:%S")
+                if returncode == 0:
+                    self.add_cmd_output("\nInference job finished successfully at time {} (returncode 0).".format(end_timestamp_s))
+                if self.inference_process.poll() > 0:
+                    self.add_cmd_output("\nERROR: Inference job encountered an error at time {} (returncode {}).\n".format(end_timestamp_s, returncode))
+                time_elapsed = end_timestamp - self.start_timestamp
+                
+                self.add_cmd_output("Time elapsed: {}\n".format(format_seconds(time_elapsed.total_seconds())))
                 self.inference_process = None
 
         # Disable Run Inference button if there's an existing process running.
@@ -250,6 +284,7 @@ class InferenceUI:
     def run_inference(self, cmd_output_buffer: Queue):
         "Starts inference calculations, using the input settings."
         # Set up script variables
+        # TODO: Check from src script surroundings
         path_to_inference_script = "./src/norfair_tracking.py"
         video_in_path = self.video_in.get()
         video_out_path = self.video_out.get()
@@ -257,6 +292,18 @@ class InferenceUI:
         model_path = self.ml_model_weights.get()
         period = self.period.get()
         device = "cuda" if self.use_gpu.get() else "cpu"
+
+        # Check variables and abort if incomplete.
+        if video_in_path == "":
+            self.add_cmd_output("ERROR: Missing input video.\n")
+            return
+        if model_path == "":
+            self.add_cmd_output("ERROR: Missing YOLO detection model.\n")
+            return
+
+        if period <= 0:
+            self.add_cmd_output("ERROR: Period must be a positive integer. Setting to default (1).")
+            period = 0
 
         # Format command
         cmdlist = [
@@ -276,23 +323,28 @@ class InferenceUI:
         # self.cmd_output_area.delete("1.0", END)
         self.cmd_output_area.mark_set("insert", END)
 
-        self.add_cmd_output(" ".join(cmdlist) + "\n")
+        self.start_timestamp = datetime.now()
+        self.add_cmd_output("\n------------------------------\n")
+        self.add_cmd_output("Starting new inference job at time {}.\n".format(self.start_timestamp.strftime("%H:%M:%S")))
+        self.add_cmd_output("Running inference script with the following command:\n")
+        self.add_cmd_output(cmdlist_to_cmd_string(cmdlist) + "\n\n")
+        self.add_cmd_output("Setting up...\n")
 
         # Start the inference thread
         self.inference_process = subprocess.Popen(cmdlist,
                                                   stdout=subprocess.PIPE,
-                                                  stderr=subprocess.PIPE,
+                                                  stderr=subprocess.STDOUT,
                                                   universal_newlines=True)
         # Start a thread to receive process output
-        t = Thread(target=self.cmd_reader_thread, args=[cmd_output_buffer])
-        t.daemon = True # Flags as a daemon thread, so it will close at shutdown
-        t.start()
+        reader_thread = Thread(target=self.cmd_reader_thread, args=[cmd_output_buffer])
+        reader_thread.daemon = True # Flags as a daemon thread, so it will close at shutdown
+        reader_thread.start()
 
     def quit(self):
-        "Closes threads and the program."
+        "Closes running processes and the program."
         if self.inference_process is not None:
             self.inference_process.kill()
-            self.root.destroy()
+        self.root.destroy()
 
 root = Tk()
 app = InferenceUI(root)

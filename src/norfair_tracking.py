@@ -140,6 +140,13 @@ if __name__ == "__main__":
                         help="Show a preview of detections in real time. Do not use in notebooks.")
 
     args = parser.parse_args()
+    
+    # Check file inputs to make sure they actually exist.
+    if not Path(args.detector_path).exists():
+        raise FileNotFoundError("Could not find YOLOv5 detector '{}'".format(args.detector_path))
+    for input_path in args.files:
+        if not Path(input_path):
+            raise FileNotFoundError("Could not find video input path '{}'".format(args.detector_path))
 
     model = YOLO(args.detector_path, device=args.device)
     start_time = datetime.now()
