@@ -12,6 +12,7 @@ from tkinter import ttk
 from tkinter import filedialog
 from typing import List, Tuple
 import torch
+import os
 
 from detection import format_seconds
 
@@ -287,7 +288,10 @@ class InferenceUI:
         "Starts inference calculations, using the input settings."
         # Set up script variables
         # TODO: Check from src script surroundings
-        path_to_inference_script = "./src/detection.py"
+        dir_name = os.path.dirname(__file__)
+        relative_path_to_inference_script = "./src/detection.py"
+        path_to_inference_script = os.path.join(dir_name, relative_path_to_inference_script)
+        
         video_in_path = self.video_in.get()
         video_out_path = self.video_out.get()
         csv_out_path = self.csv_out.get()
