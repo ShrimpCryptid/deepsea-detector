@@ -1,0 +1,7 @@
+# Tracking ----------------------------------------
+torch>=1.7.0
+norfair
+norfair[video]
+cv2
+yolov5
+pillow
