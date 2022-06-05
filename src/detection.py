@@ -230,12 +230,12 @@ if __name__ == "__main__":
                 )
                 cv2.setWindowTitle(PREVIEW_WINDOW_NAME, name)
 
-    print(track_id_to_data)
     # Finished traversing frames, so we write out CSV tracking data.
     with open(args.output_csv, 'w', newline='') as csv_file:
-        fieldnames = ['classification', 'first_frame', 'last_frame']
+        fieldnames = ['classification', 'first_frame', 'first_timestamp', 'last_frame', 'last_timestamp']
         writer = csv.DictWriter(
             csv_file, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
+        writer.writeheader()
         for organism_detection in track_id_to_data.values():
             # Write out each tracked object as its own row.
             # classification, starting frame, ending frame
@@ -243,7 +243,9 @@ if __name__ == "__main__":
             writer.writerow({
                 'classification': organism_detection.classification,
                 'first_frame': first_frame,
-                'last_frame': last_frame
+                'first_timestamp': format_seconds(first_frame // fps),
+                'last_frame': last_frame,
+                'last_timestamp': format_seconds(last_frame // fps),
             })
 
     # Close the preview window
@@ -252,5 +254,5 @@ if __name__ == "__main__":
         # documented behavior and might be changed in the future.
         try:
             cv2.destroyWindow(PREVIEW_WINDOW_NAME)
-        finally:
+        except cv2.error:
             pass

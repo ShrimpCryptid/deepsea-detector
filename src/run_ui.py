@@ -7,7 +7,7 @@ from functools import partial
 from queue import Empty, Queue
 import subprocess
 from threading import Thread
-from tkinter import *  # pylint: disable=wildcard-import
+from tkinter import *  # pylint: disable=wildcard-import disable=unused-wildcard-import
 from tkinter import ttk
 from tkinter import filedialog
 from typing import List, Tuple
@@ -214,13 +214,15 @@ class InferenceUI:
         "Opens a file dialog and sets the given target StringVar to the selected file path."
         file_path = filedialog.askopenfilename(filetypes=filetypes,
                                                defaultextension=default_extension)
-        target.set(file_path)
+        if file_path != "" and file_path is not None:
+            target.set(file_path)
 
     def save_as(self, target: StringVar, default_path: str, extension: List[Tuple[str, str]] = list()):
         "Opens a file save dialog and sets the given StringVar to that file path."
         file_path = filedialog.asksaveasfilename(
             initialfile=default_path, filetypes=extension)
-        target.set(file_path)
+        if file_path != "" and file_path is not None: # Don't change if cancelled
+            target.set(file_path)
 
     def get_default_tags(self, line):
         """return a tuple of tags to be applied to the line of text 'line'
