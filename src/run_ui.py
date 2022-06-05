@@ -1,7 +1,7 @@
 """User interface for running video detection and tracking inference."""
 
 # pylint: disable=line-too-long
-# pylint: disable=consider-use-fstring
+# pylint: disable=consider-use-f-string
 from datetime import datetime
 from functools import partial
 from queue import Empty, Queue
@@ -13,7 +13,7 @@ from tkinter import filedialog
 from typing import List, Tuple
 import torch
 
-from norfair_tracking import format_seconds
+from detection import format_seconds
 
 # From https://stackoverflow.com/questions/665566/redirect-command-line-results-to-a-tkinter-gui
 def iter_except(function, exception):
@@ -285,7 +285,7 @@ class InferenceUI:
         "Starts inference calculations, using the input settings."
         # Set up script variables
         # TODO: Check from src script surroundings
-        path_to_inference_script = "./src/norfair_tracking.py"
+        path_to_inference_script = "./src/detection.py"
         video_in_path = self.video_in.get()
         video_out_path = self.video_out.get()
         csv_out_path = self.csv_out.get()
