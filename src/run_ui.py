@@ -10,11 +10,25 @@ from threading import Thread
 from tkinter import *  # pylint: disable=wildcard-import disable=unused-wildcard-import
 from tkinter import ttk
 from tkinter import filedialog
+import tkinter
 from typing import List, Tuple
+from PIL import ImageTk, Image, ImageDraw, ImageFont
 import torch
 import os
 
 from detection import format_seconds
+
+MIN_WIDTH = 600
+MIN_HEIGHT = 600
+
+VERSION = "1.0"
+
+dir_name = os.path.dirname(__file__)
+INFERENCE_SCRIPT_RELATIVE_PATH = "./detection.py"
+INFERENCE_SCRIPT_PATH = os.path.join(dir_name, INFERENCE_SCRIPT_RELATIVE_PATH)
+SPLASH_IMAGE_RELATIVE_PATH = "./assets/splash.jpg"
+SPLASH_IMAGE_PATH = os.path.join(dir_name, SPLASH_IMAGE_RELATIVE_PATH)
+
 
 # From https://stackoverflow.com/questions/665566/redirect-command-line-results-to-a-tkinter-gui
 def iter_except(function, exception):
@@ -47,7 +61,7 @@ class InferenceUI:
     def __init__(self, root):
         self.root = root
         root.title("Deepsea-Detector UI")
-        root.minsize(600, 600)
+        root.minsize(MIN_WIDTH, MIN_HEIGHT)
 
         self.inference_process = None
         self.start_timestamp = datetime.now()
@@ -59,6 +73,27 @@ class InferenceUI:
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
         mainframe.columnconfigure(1, weight=1)
+
+        # Splash Screen
+        splash_image_src = Image.open(SPLASH_IMAGE_PATH)
+        # Get image aspect ratio
+
+        image_aspect_ratio_w_h = splash_image_src.width / splash_image_src.height
+        splash_height = int(MIN_WIDTH // image_aspect_ratio_w_h)
+        splash_frame = ttk.Frame(mainframe, height=splash_height)
+        splash_frame.grid(column=1, row=0, sticky=(W, N, E))        
+
+        splash_image_src = splash_image_src.resize((MIN_WIDTH, splash_height), Image.LANCZOS)
+        # Add project name label
+        draw = ImageDraw.Draw(splash_image_src)
+        font = ImageFont.truetype("./assets/OpenSans-Light.ttf", 40)
+        draw.text((10,0), "Deepsea-Detector v" + VERSION, (225,225,225), font=font)
+        # draw.text((10,0), "Image credit: ")
+
+        splash_image = ImageTk.PhotoImage(splash_image_src)
+        splash_label = tkinter.Label(splash_frame, image=splash_image)
+        splash_label.image = splash_image
+        splash_label.place(relx=0, rely=0)
 
         # ===================
         # INPUT
@@ -286,12 +321,7 @@ class InferenceUI:
     # Adapted from https://www.executionunit.com/blog/2012/10/26/using-python-and-tkinter-to-capture-script-output/
     def run_inference(self, cmd_output_buffer: Queue):
         "Starts inference calculations, using the input settings."
-        # Set up script variables
-        # TODO: Check from src script surroundings
-        dir_name = os.path.dirname(__file__)
-        relative_path_to_inference_script = "./detection.py"
-        path_to_inference_script = os.path.join(dir_name, relative_path_to_inference_script)
-        
+        # Set up script variables        
         video_in_path = self.video_in.get()
         video_out_path = self.video_out.get()
         csv_out_path = self.csv_out.get()
@@ -314,7 +344,7 @@ class InferenceUI:
         # Format command
         cmdlist = [
             "python",
-            path_to_inference_script,
+            INFERENCE_SCRIPT_PATH,
             video_in_path,
             "--detector_path", model_path,
             "--output_video", video_out_path,
