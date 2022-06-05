@@ -4,8 +4,8 @@ import os
 from worms_classifier import ConceptDictionary, OrganismClass
 
 USE_FILTER = True
-FILTER_IMAGE_LIST = "fathomnet_fully_verified_non_noaa_image_list.json"
-FILTER_DESCRIPTION = "fully_verified_non_noaa_"
+FILTER_IMAGE_LIST = "fathomnet_non_noaa_arthropod_image_list.json"
+FILTER_DESCRIPTION = "non_noaa_arthropod_"
 
 FILTER_PREFIX = FILTER_DESCRIPTION if USE_FILTER else ""
 
@@ -139,7 +139,9 @@ for image in labels_reader:
             if category_name is None:
                 unmatched_log_file.write(str(image["id"]) + ", " + str(boundingBox["concept"]) + '\n')
                 continue
-            category_id = category_name_to_id[category_name]
+            category_id = category_name_to_id[OrganismClass.UNIDENTIFIED.value]
+            if category_name in category_name_to_id:
+                category_id = category_name_to_id[category_name]
 
             new_annotation = {
                 "id": annotation_id,
