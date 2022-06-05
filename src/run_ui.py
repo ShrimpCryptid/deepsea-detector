@@ -289,7 +289,7 @@ class InferenceUI:
         # Set up script variables
         # TODO: Check from src script surroundings
         dir_name = os.path.dirname(__file__)
-        relative_path_to_inference_script = "./src/detection.py"
+        relative_path_to_inference_script = "./detection.py"
         path_to_inference_script = os.path.join(dir_name, relative_path_to_inference_script)
         
         video_in_path = self.video_in.get()
