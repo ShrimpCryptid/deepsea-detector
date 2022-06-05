@@ -3,6 +3,8 @@
 """
 
 import argparse
+from datetime import datetime
+from pathlib import Path
 from typing import Dict, Union, List, Optional, Set
 import csv
 
@@ -56,6 +58,17 @@ def euclidean_distance(detection, tracked_object):
 def center(points):
     """Returns the center coordinates of a series of points."""
     return [np.mean(np.array(points), axis=0)]
+
+
+def format_seconds(seconds: int) -> str:
+    "Formats a duration in seconds into a string format. (H:MM:SS or MM:SS)"
+    h = seconds // 3600
+    m = (seconds % 3600) // 60
+    s = (seconds % 60)
+    if h > 0:
+        return "%d:%02d:%02d" % (h, m, s)
+    else:
+        return "%02d:%02d" % (m, s)
 
 
 def yolo_detections_to_norfair_detections(
@@ -129,10 +142,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     model = YOLO(args.detector_path, device=args.device)
+    start_time = datetime.now()
 
     for input_path in args.files:
         video = norfair.Video(input_path=input_path,
                               output_path=args.output_video)
+
+        # Get video metadata (fps, frames, etc.)
+        video_capture = cv2.VideoCapture(input_path)
+        total_frames = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = int(video_capture.get(cv2.CAP_PROP_FPS))
+        duration = total_frames / fps
+
+        filename = Path(input_path).name
+
         tracker = norfair.Tracker(
             distance_function=euclidean_distance,
             distance_threshold=max_distance_between_points,
@@ -147,7 +170,6 @@ if __name__ == "__main__":
         currently_tracked_ids: Set[int] = set()
 
         for i, frame in enumerate(video):
-
             if i % args.period == 0:
                 yolo_detections = model(
                     frame,
@@ -186,6 +208,18 @@ if __name__ == "__main__":
 
             if args.show_preview:
                 cv2.imshow(PREVIEW_WINDOW_NAME, frame)
+                curr_time = datetime.now()
+                time_per_frame = (curr_time - start_time) / (i + 1)
+                remaining_time_s = (total_frames - (i + 1)) * time_per_frame.total_seconds()
+
+                name = "{filename}: {curr_duration}/{total_duration} ({percent_completion}% complete, est. {remaining_time} remaining)".format(
+                    filename=filename,
+                    curr_duration=format_seconds((i + 1) / fps),
+                    total_duration=format_seconds(total_frames / fps),
+                    percent_completion=str(int(((i + 1) / total_frames * 100))),
+                    remaining_time=format_seconds(remaining_time_s)
+                )
+                cv2.setWindowTitle(PREVIEW_WINDOW_NAME, name)
 
     print(track_id_to_data)
     # Finished traversing frames, so we write out CSV tracking data.
@@ -204,4 +238,9 @@ if __name__ == "__main__":
 
     # Close the preview window
     if args.show_preview:
-        cv2.destroyWindow(PREVIEW_WINDOW_NAME)
+        # Need a try here because norfair video will destroy all open cv2 windows, but it's not a
+        # documented behavior and might be changed in the future.
+        try:
+            cv2.destroyWindow(PREVIEW_WINDOW_NAME)
+        finally:
+            pass
