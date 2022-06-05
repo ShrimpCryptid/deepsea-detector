@@ -136,9 +136,19 @@ class InferenceUI:
         ml_frame.columnconfigure(2, weight=1)
 
         # Model Weights (.pt)
+
+        # get path to default model, if it exists
+        dir_name = os.path.dirname(__file__)
+        relative_default_model_path = "../deepsea-detector.pt"
+        default_model_path = os.path.join(dir_name, relative_default_model_path)
+        
+
         ttk.Label(ml_frame, text="YOLO Model:", padding=label_padding)\
             .grid(column=1, row=1, sticky=NW)
-        self.ml_model_weights = StringVar()
+        if (os.path.exists(default_model_path)):
+            self.ml_model_weigths = StringVar(value=default_model_path)
+        else:
+            self.ml_model_weights = StringVar()
         ttk.Entry(ml_frame, width=InferenceUI.file_entry_width, textvariable=self.ml_model_weights)\
             .grid(column=2, row=1, sticky=(W, E))
         ml_browse_command = partial(self.browse,
