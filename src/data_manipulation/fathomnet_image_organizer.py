@@ -1,7 +1,12 @@
 import json
 import os
 
-DATA_FILES_PREFIX = "../data/"
+# extracts images from the fathomnet dataset that are verfied, and splits them based on 
+# whether they are from NOAA or not
+# We separate NOAA images because they include a header with text identifying a species, which
+# would need to be cropped out before using it as training data for our model
+
+DATA_FILES_PREFIX = "../../data/"
 OUTPUT_FOLDER_PREFIX = "fathomnet_image_lists/"
 FATHOMNET_DATA_FILE = "fathomnet_global.json"
 

@@ -2,7 +2,7 @@ import json
 import os
 from worms_classifier import ConceptDictionary, OrganismClass
 
-DATA_FILES_PREFIX = "../data/"
+DATA_FILES_PREFIX = "../../data/"
 OUTPUT_FOLDER = DATA_FILES_PREFIX + "fathomnet_image_lists/"
 FATHOMNET_DATA_FILE = DATA_FILES_PREFIX + "fathomnet_global.json"
 

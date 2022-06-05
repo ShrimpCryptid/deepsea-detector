@@ -34,7 +34,7 @@
 
 
 // number of images in the annotated set
-// hard-coded, because i'm too lazy to write code to do this for us
+// set this before the script is run
 NUM_IMAGES = 800
 
 

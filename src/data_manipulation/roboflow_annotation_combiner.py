@@ -15,7 +15,7 @@ import os
 from worms_classifier import OrganismClass
 
 # where data is stored relative to this script
-DATA_FILEPATH = "../data/"
+DATA_FILEPATH = "../../data/"
 
 # the folder where the exported roboflow annotations are stored
 # relative to the data filepath

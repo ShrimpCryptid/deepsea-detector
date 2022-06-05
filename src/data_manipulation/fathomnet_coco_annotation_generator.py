@@ -12,7 +12,7 @@ FILTER_PREFIX = FILTER_DESCRIPTION if USE_FILTER else ""
 FILTER_LIST_PREFIX = "fathomnet_image_lists/"
 
 
-DATA_FILES_PREFIX = "../data/"
+DATA_FILES_PREFIX = "../../data/"
 ANNOTATION_FILES_PREFIX = "generated_annotations/"
 
 ANNOTATION_FILENAME = "fathomnet_" + FILTER_PREFIX  + "coco_annotations.json"

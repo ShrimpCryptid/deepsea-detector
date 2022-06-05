@@ -4,9 +4,11 @@ import csv
 # moves images from IMAGE_FOLDER to NEW_UPLOAD_FOLDER if they are in the ANNOTATED_IMAGE_LIST
 # part of the process of extracting only the images that have been manually annotated from Roboflow
 
-IMAGE_FOLDER = "../mate_image_data/"
+# folder containing full dataset 
+IMAGE_FOLDER = "INSERT_IMAGE_FOLDER_HERE"
+# csv containing list of images that have been manually annotated
+ANNOTATED_IMAGE_LIST = "INSERT_IMAGE_LIST_HERE"
 NEW_UPLOAD_FOLDER = IMAGE_FOLDER + "new_uploads/"
-ANNOTATED_IMAGE_LIST = "roboflow_mate_annotated_image_names.csv"
 
 dirname = os.path.dirname(__file__)
 filename = os.path.join(dirname, ANNOTATED_IMAGE_LIST)

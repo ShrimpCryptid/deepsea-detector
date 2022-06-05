@@ -2,7 +2,7 @@ import urllib.request
 import os
 import json
 
-DATA_PREFIX = "../data"
+DATA_PREFIX = "../../data"
 IMAGE_LIST_FILENAME = "fathomnet_fully_verified_non_noaa_image_list.json"
 IMAGE_LISTS_FILEPATH = DATA_PREFIX + "fathomnet_image_lists/"
 IMAGE_DOWNLOAD_FILEPATH = DATA_PREFIX + "fathomnet_non_noaa_arthropods/"

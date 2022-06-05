@@ -5,7 +5,7 @@ import ast
 
 
 # where data is stored relative to this script
-DATA_FILES_PREFIX = "../data/"
+DATA_FILES_PREFIX = "../../data/"
 
 # the file that contains all rows that could not be matched to a concept or were not localized
 UNMATCHED_LOG_FILENAME = "mate_unmatched_labels.csv"

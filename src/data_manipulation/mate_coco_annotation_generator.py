@@ -7,7 +7,7 @@ import csv
 from worms_classifier import ConceptDictionary, OrganismClass
 
 # where data is stored relative to this script
-DATA_FILES_PREFIX = "../data/"
+DATA_FILES_PREFIX = "../../data/"
 
 # the annotation file this script generates
 ANNOTATION_FILENAME = "mate_coco_annotations.json"
