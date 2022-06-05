@@ -102,8 +102,8 @@ categories = [
 
 category_name_to_id = {}
 
-for i in range(len(categories_list)):
-    category_name = categories_list[i]
+for i in range(1, (1+len(categories_list))):
+    category_name = categories_list[i-1]
     new_cat = {
             "id": i,
             "name": category_name,
@@ -158,7 +158,6 @@ for image in labels_reader:
 
     
 # WRITING
-# licenses for this data are unknown, so not including them
 coco_annotation = {
     "info": info,
     "licenses": licenses,
