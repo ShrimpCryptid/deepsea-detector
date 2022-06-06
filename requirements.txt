@@ -3,3 +3,4 @@ yolov5
 norfair
 norfair[video]
 pillow
+tk
