@@ -5,8 +5,7 @@ Developed by Peyton Lee, Neha Nagvekar, and Cassandra Lam as part of the Underwa
 
 Deepsea-Detector is built on MBARI's [Monterey Bay Benthic Object Detector](https://zenodo.org/record/5539915), which can also be found in FathomNet's [Model Zoo](https://github.com/fathomnet/models). The model is trained on data from [NOAA Ocean Exploration](https://oceanexplorer.noaa.gov/) and [FathomNet](http://fathomnet.org/fathomnet/#/), with assistance from [WoRMS](https://www.marinespecies.org/) for organism classification. All the images and associated annotations we used can be found in our [Roboflow project](https://universe.roboflow.com/uwrov-2022-ml-challenge/deepsea-detect--mate-2022-ml-challenge).
 
-![image](https://user-images.githubusercontent.com/62577438/172084255-e45a6165-c319-47b0-8da9-35f3f0c4e295.png)\
-![image](https://www.marinespecies.org/images/layout/WoRMS_logo_blue.svg)\
-![image](https://cpaess.ucar.edu/sites/default/files/images/ocean-exploration-logo-360.png)\
-![image](https://materovcompetition.org/sites/default/files/CompMastheadLogo.jpg)
-
+<img src="https://user-images.githubusercontent.com/62577438/172084255-e45a6165-c319-47b0-8da9-35f3f0c4e295.png" width="200"/>
+<img src="https://www.marinespecies.org/images/layout/WoRMS_logo_blue.svg" width="200"/>
+<img src="https://cpaess.ucar.edu/sites/default/files/images/ocean-exploration-logo-360.png" width="200"/>
+<img src="https://materovcompetition.org/sites/default/files/CompMastheadLogo.jpg" width="200"/>
