@@ -23,11 +23,14 @@ MIN_HEIGHT = 600
 
 VERSION = "1.0"
 
-dir_name = os.path.dirname(__file__)
+DIR_NAME = os.path.dirname(__file__)
+MODEL_DEFAULT_PATH =  os.path.join(DIR_NAME, "../models/deepsea-detector.pt")
 INFERENCE_SCRIPT_RELATIVE_PATH = "./detection.py"
-INFERENCE_SCRIPT_PATH = os.path.join(dir_name, INFERENCE_SCRIPT_RELATIVE_PATH)
+INFERENCE_SCRIPT_PATH = os.path.join(DIR_NAME, INFERENCE_SCRIPT_RELATIVE_PATH)
 SPLASH_IMAGE_RELATIVE_PATH = "./assets/splash.jpg"
-SPLASH_IMAGE_PATH = os.path.join(dir_name, SPLASH_IMAGE_RELATIVE_PATH)
+SPLASH_IMAGE_PATH = os.path.join(DIR_NAME, SPLASH_IMAGE_RELATIVE_PATH)
+FONTS_PATH = os.path.join(DIR_NAME, "./assets/OpenSans-Light.ttf")
+FONTS_PATH_ITALICS = os.path.join(DIR_NAME, "./assets/OpenSans-MediumItalic.ttf")
 
 
 # From https://stackoverflow.com/questions/665566/redirect-command-line-results-to-a-tkinter-gui
@@ -86,9 +89,10 @@ class InferenceUI:
         splash_image_src = splash_image_src.resize((MIN_WIDTH, splash_height), Image.LANCZOS)
         # Add project name label
         draw = ImageDraw.Draw(splash_image_src)
-        font = ImageFont.truetype("./assets/OpenSans-Light.ttf", 40)
+        font = ImageFont.truetype(FONTS_PATH, 40)
+        font_italic = ImageFont.truetype(FONTS_PATH_ITALICS, 12)
         draw.text((10,0), "Deepsea-Detector v" + VERSION, (225,225,225), font=font)
-        # draw.text((10,0), "Image credit: ")
+        draw.text((12,50), "Image courtesy of NOAA Ocean Exploration", (225, 225, 225), font=font_italic)
 
         splash_image = ImageTk.PhotoImage(splash_image_src)
         splash_label = tkinter.Label(splash_frame, image=splash_image)
@@ -171,17 +175,10 @@ class InferenceUI:
         ml_frame.columnconfigure(2, weight=1)
 
         # Model Weights (.pt)
-
-        # get path to default model, if it exists
-        dir_name = os.path.dirname(__file__)
-        relative_default_model_path = "../deepsea-detector.pt"
-        default_model_path = os.path.join(dir_name, relative_default_model_path)
-        
-
         ttk.Label(ml_frame, text="YOLO Model:", padding=label_padding)\
             .grid(column=1, row=1, sticky=NW)
-        if (os.path.exists(default_model_path)):
-            self.ml_model_weigths = StringVar(value=default_model_path)
+        if (os.path.exists(MODEL_DEFAULT_PATH)):
+            self.ml_model_weights = StringVar(value=MODEL_DEFAULT_PATH)
         else:
             self.ml_model_weights = StringVar()
         ttk.Entry(ml_frame, width=InferenceUI.file_entry_width, textvariable=self.ml_model_weights)\
