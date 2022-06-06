@@ -3,7 +3,7 @@ A deep-sea creature detector for the [2022 MATE Machine Learning Satellite Chall
 
 Deepsea-detector is built on MBARI's [Monterey Bay Benthic Object Detector](https://zenodo.org/record/5539915), which can also be found in FathomNet's [Model Zoo](https://github.com/fathomnet/models). The model is trained on data from [NOAA Ocean Exploration](https://oceanexplorer.noaa.gov/) and [FathomNet](http://fathomnet.org/fathomnet/#/). All the images and associated annotations we used can be found in our [Roboflow project](https://universe.roboflow.com/uwrov-2022-ml-challenge/deepsea-detect--mate-2022-ml-challenge).
 
-#TODO: Getting Started
+#TODO: Getting Started, YOLO acknowledgement, NOAA logo
 
 
 
