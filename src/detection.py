@@ -5,13 +5,12 @@
 import argparse
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Tuple, Union, List, Optional, Set
+from typing import Dict, Tuple, Union, List, Optional
 import csv
 
 import cv2
 import norfair
 import numpy as np
-from pyparsing import Or
 import torch
 import yolov5
 
@@ -135,7 +134,7 @@ if __name__ == "__main__":
                         help="Video files to process")
     parser.add_argument("--detector_path", type=str,
                         default="yolov5m6.pt", help="YOLOv5 model path")
-    parser.add_argument("--img_size", type=int, default="720",
+    parser.add_argument("--img_size", type=int, default="640",
                         help="YOLOv5 inference size (pixels)")
     parser.add_argument("--conf_thres", type=float, default="0.25",
                         help="YOLOv5 object confidence threshold")
@@ -147,13 +146,18 @@ if __name__ == "__main__":
                         help="Inference device: 'cpu' or 'cuda'")
     parser.add_argument("--period", type=int, default=1,
                         help="The period (in frames) with which the detector should be run.")
-    # TODO: Handle multiple input videos without overwriting the same file
     parser.add_argument("--output_csv", type=str, default="out.csv",
                         help="Output path for the tracking data CSV file.")
     parser.add_argument("--output_video", type=str, default="out.mp4",
-                        help="Output path for the MP4 video file, showing annotations.")
+                        help="Output video file if only running one file at a time. Ignored if multiple video files are provided. Note that an existing file will not be overwritten-- a copy with a number suffix (ex: video(1).mp4) will be written instead.")
+    parser.add_argument("--output_folder", type=str, default="./",
+                        help="Output folder used when multiple files are provided. Note that existing files will not be overwritten-- copies with a number suffix (ex: video(1).mp4) will be written instead.")
+    parser.add_argument("--output_video_prefix", type=str, default="out_",
+                        help="Prefix to add to each processed video name when multiple video files are provided. Default is 'out_'")
     parser.add_argument("--show_preview", action="store_true",
-                        help="Show a preview of detections in real time. Do not use in notebooks.")
+                        help="Show a preview of detections in real time. Do not use in python notebooks.")
+    parser.add_argument("--show_classes", action="store_true",
+                        help="Include the class labels in the output video(s).")
 
     args = parser.parse_args()
     
@@ -163,13 +167,48 @@ if __name__ == "__main__":
     for input_path in args.files:
         if not Path(input_path):
             raise FileNotFoundError("Could not find video input path '{}'".format(args.detector_path))
+    if not Path(args.output_folder).is_dir():
+        raise FileNotFoundError("Could not find directory '{}'".format(args.output_folder))
 
     model = YOLO(args.detector_path, device=args.device)
-    start_time = datetime.now()
+
+    video_path_to_data: Dict[str, Dict[int, OrganismDetection]] = {}
 
     for input_path in args.files:
+        start_time = datetime.now()
+        # Get output path name
+        file_attempt = 1
+        output_name = ""
+        if len(args.files) > 1:
+            output_name = Path("{}/{}{}{}".format(
+                    args.output_folder,
+                    args.output_video_prefix,
+                    Path(input_path).stem,
+                    Path(input_path).suffix
+                ))
+        else:
+            output_name = Path(args.output_video)
+        # Increment the (1), (2), (3) file numbering if file exists
+        while(output_name.exists()):
+            if len(args.files) > 1:
+                output_name = Path("{}/{}{}({}){}".format(
+                    args.output_folder,
+                    args.output_video_prefix,
+                    Path(input_path).stem,
+                    file_attempt,
+                    Path(input_path).suffix
+                ))
+            else:
+                output_name = Path(args.output_video).parent/Path("{}({}){}".format(
+                    Path(args.output_video).stem,
+                    file_attempt,
+                    Path(args.output_video).suffix
+                ))
+            file_attempt += 1
+
+
         video = norfair.Video(input_path=input_path,
-                              output_path=args.output_video)
+                              output_path=str(output_name))
 
         # Get video metadata (fps, frames, etc.)
         video_capture = cv2.VideoCapture(input_path)
@@ -200,7 +239,7 @@ if __name__ == "__main__":
                     yolo_detections, track_points="bbox")
                 tracked_objects = tracker.update(
                     detections=norfair_detections, period=args.period)
-                norfair.draw_boxes(frame, norfair_detections)
+                # norfair.draw_boxes(frame, norfair_detections)
             else:
                 tracked_objects = tracker.update()
 
@@ -210,8 +249,7 @@ if __name__ == "__main__":
                     track_id_to_data[obj.id] = OrganismDetection(obj.id, obj.label)
                 track_id_to_data[obj.id].add_detection(i)
 
-            norfair.draw_tracked_boxes(frame, tracked_objects, color_by_label=True,
-                                       draw_labels=True, border_width=1)
+            norfair.draw_tracked_boxes(frame, tracked_objects, border_colors=[(0, 255, 255)], border_width=1)
             frame = paths_drawer.draw(frame, tracked_objects)
             video.write(frame)
 
@@ -229,24 +267,31 @@ if __name__ == "__main__":
                     remaining_time=format_seconds(remaining_time_s)
                 )
                 cv2.setWindowTitle(PREVIEW_WINDOW_NAME, name)
+        # Save all the data for this video
+        video_path_to_data[input_path] = track_id_to_data
 
     # Finished traversing frames, so we write out CSV tracking data.
     with open(args.output_csv, 'w', newline='') as csv_file:
-        fieldnames = ['classification', 'first_frame', 'first_timestamp', 'last_frame', 'last_timestamp']
+        fieldnames = ['src_video', 'classification', 'first_frame', 'first_timestamp', 'last_frame', 'last_timestamp']
         writer = csv.DictWriter(
             csv_file, fieldnames=fieldnames, quoting=csv.QUOTE_MINIMAL)
         writer.writeheader()
-        for organism_detection in track_id_to_data.values():
-            # Write out each tracked object as its own row.
-            # classification, starting frame, ending frame
-            first_frame, last_frame = organism_detection.get_first_last_frame()
-            writer.writerow({
-                'classification': organism_detection.classification,
-                'first_frame': first_frame,
-                'first_timestamp': format_seconds(first_frame // fps),
-                'last_frame': last_frame,
-                'last_timestamp': format_seconds(last_frame // fps),
-            })
+        for input_path in video_path_to_data:
+            track_id_to_data = video_path_to_data[input_path]
+            video_filename = Path(input_path).name
+
+            for organism_detection in track_id_to_data.values():
+                # Write out each tracked object as its own row.
+                # classification, starting frame, ending frame
+                first_frame, last_frame = organism_detection.get_first_last_frame()
+                writer.writerow({
+                    'src_video': video_filename,
+                    'classification': organism_detection.classification,
+                    'first_frame': first_frame,
+                    'first_timestamp': format_seconds(first_frame // fps),
+                    'last_frame': last_frame,
+                    'last_timestamp': format_seconds(last_frame // fps),
+                })
 
     # Close the preview window
     if args.show_preview:
