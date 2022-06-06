@@ -1,2 +1,2 @@
-*.pt binary
+*.pt filter=lfs diff=lfs merge=lfs -text
 *.mp4 binary
