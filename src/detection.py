@@ -249,7 +249,10 @@ if __name__ == "__main__":
                     track_id_to_data[obj.id] = OrganismDetection(obj.id, obj.label)
                 track_id_to_data[obj.id].add_detection(i)
 
-            norfair.draw_tracked_boxes(frame, tracked_objects, border_colors=[(0, 255, 255)], border_width=1)
+            if args.show_classes:
+                norfair.draw_tracked_boxes(frame, tracked_objects, border_colors=[(0, 255, 255)], border_width=1, draw_labels=True)
+            else:
+                norfair.draw_tracked_boxes(frame, tracked_objects, border_colors=[(0, 255, 255)], border_width=1)
             frame = paths_drawer.draw(frame, tracked_objects)
             video.write(frame)
 

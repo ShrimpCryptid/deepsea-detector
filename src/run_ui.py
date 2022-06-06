@@ -216,6 +216,12 @@ class InferenceUI:
             self.gpu_checkbox["state"] = "disabled"
             ttk.Label(ml_frame, text="No GPU detected.", padding=label_padding).grid(
                 column=2, row=6, sticky=NW)
+        # Show classes
+        ttk.Label(ml_frame, text="Show Class Preview:", padding=label_padding).grid(
+            column=1, row=7, sticky=NW)
+        self.show_class = BooleanVar(value=False)
+        self.show_class_checkbox = ttk.Checkbutton(ml_frame, variable=self.show_class)
+        self.show_class_checkbox.grid(column=2, row=7, sticky=W)
 
         # RUN INFERENCE
         cmd_output_buffer = Queue(maxsize=1024)  # Buffer for output from any running commands.
@@ -359,8 +365,10 @@ class InferenceUI:
             "--period", str(period),
             "--device", device,
             "--conf_thres", str(0.05),
-            "--show_preview"
+            "--show_preview",
             ]
+        if self.show_class.get():
+            cmdlist.append("--show_classes")
 
         # Clear text area, move cursor to end
         # self.cmd_output_area.delete("1.0", END)
