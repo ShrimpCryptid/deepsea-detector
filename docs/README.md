@@ -1,6 +1,6 @@
 # Deepsea-Detector: A deep-sea organism classifier.
 
-![image](https://user-images.githubusercontent.com/62577438/172253781-3bffec9b-f94a-4862-bbec-d64fdf1b7c20.png)
+<img src=https://user-images.githubusercontent.com/62577438/172253781-3bffec9b-f94a-4862-bbec-d64fdf1b7c20.png alt="UWROV logo" width="200"/>
 
 **Student Contributors:**
 | Name | Role |
