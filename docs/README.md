@@ -8,6 +8,17 @@
 | Neha Nagvekar | Data Management, Annotation |
 | Peyton Lee | Model Training, User Interface, Annotation |
 | Cassandra Lam | Additional Annotation Help |
+
+## Navigation
+  * [Problem Description](#problem-description)
+  * [Data](#data)
+  * [Model](#model)
+  * [UI](#ui)
+  * [Results](#results)
+  * [Limitations](#limitations)
+  * [Resources and Acknowledgements](#resources-and-acknowledgements)
+  * [Video Explanation](#video-explanation)
+
 ## Problem Description
 We built our model to tackle [MATE’s 2022 Ocean Exploration Challenge](https://materovcompetition.org/content/2022-mate-rov-competition-satellite-challenges), which tasked us with identifying marine organisms in seafloor footage collected via remotely operated vehicles (ROVs).
 
@@ -99,6 +110,11 @@ We would like to thank [FathomNet](fathomnet.org) and [NOAA Ocean Exploration](h
 Finally, we would like to thank Professor Joseph Redmon for his advice and guidance throughout this project.
 
 Leonard, C., Evans, J., Knittweis, L., Aguilar, R., Alvarez, H., Borg, J. A., Garcia, S., & Schembri, P. J. (2020). Diversity, distribution, and habitat associations of deep-water echinoderms in the Central Mediterranean. Marine Biodiversity, 50(5), 69. [https://doi.org/10.1007/s12526-020-01095-3](https://doi.org/10.1007/s12526-020-01095-3)
+
+
+## Video Explanation
+[![Deepsea-Detector Video Explanation](https://user-images.githubusercontent.com/62577438/172272316-9388e3fe-07e4-4cdf-9f9b-5e397d891c47.png)](https://youtu.be/gSg1rAmHmWs)
+[(On YouTube)](https://youtu.be/gSg1rAmHmWs)
 
 
 
