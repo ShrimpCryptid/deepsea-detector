@@ -48,7 +48,7 @@ You can also see an example in our [Google Colab notebook](https://colab.researc
 ## Additional Resources:
 Dataset: [Roboflow project](https://universe.roboflow.com/uwrov-2022-ml-challenge/deepsea-detect--mate-2022-ml-challenge)\
 Model Training: [Google Colab Python Notebook](https://colab.research.google.com/github/ShrimpCryptid/deepsea-detector/blob/main/notebooks/Model%20Training.ipynb)\
-[In-depth Project Explanation](https://github.com/ShrimpCryptid/deepsea-detector/blob/main/docs/README.md)
+Additional Documentation: [In-depth Project Explanation](https://github.com/ShrimpCryptid/deepsea-detector/blob/main/docs/README.md)
 
 ## Acknowledgements:
 We would like to thank the following people and organizations:
